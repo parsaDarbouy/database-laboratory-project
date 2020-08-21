@@ -434,7 +434,7 @@ while True:
     print('1. Create New Order')
     print('2. Show Orders and Items')
     print('3. Show Products')
-    print('4. update')
+    print('4. Update')
     print('5. Exit')
 
     command = input('Enter a number: ')
