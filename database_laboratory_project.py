@@ -247,7 +247,7 @@ def show_orders_and_items():
             if not orderitem_id.isdigit():
                 print('Order item id is wrong.')
                 continue
-            this_orderitem = session.query(OrderItem)\
+            this_orderitem = session.query(OrderItem) \
                 .filter(and_(OrderItem.iid == int(orderitem_id), OrderItem.oid == this_order.oid)).first()
             if not this_orderitem:
                 print('Order item id is wrong.')
@@ -277,11 +277,165 @@ def show_products():
     print()
 
 
+def update_which():
+    print()
+    print('tables:')
+    print('1.customers')
+    print('2.order items')
+    print('3.product')
+    table = input('\nselect the number of table you want to update: ')
+    print()
+    if table == '1':
+        update_customers()
+    elif table == '2':
+        update_order_item()
+    elif table == '3':
+        update_product()
+    else:
+        print('You have entered a wrong number.\n')
+
+
+def update_customers():
+    all_customers = session.query(Customer).all()
+    customer_ids = []
+    print('\nAll customers: ')
+    for customer in all_customers:
+        customer_ids.append(customer.cid)
+        print(
+            f'Customer id: {customer.cid}\t'
+            f'Customer name: {customer.cname}'
+        )
+    customer_id = input('Select a customer id: ')
+
+    if int(customer_id) not in customer_ids:
+        print("wrong id")
+        print()
+        return
+
+    this_order = session.query(Customer).filter(Customer.cid == customer_id).first()
+    print(
+        f'Customer id: {this_order.cid}\t'
+        f'Customer name: {this_order.cname}'
+    )
+
+    customer_new_name = input('enter new name: ')
+
+    session.query(Customer).filter(Customer.cid == customer_id).update({Customer.cname: customer_new_name})
+    session.commit()
+
+    this_order = session.query(Customer).filter(Customer.cid == customer_id).first()
+    print(
+        f'Customer id: {this_order.cid}\t'
+        f'Customer name: {this_order.cname}'
+    )
+    print()
+
+
+def update_order_item():
+    all_order_item = session.query(OrderItem).all()
+    order_item_ids = []
+    print('\nAll order item: ')
+    for order_item in all_order_item:
+        order_item_ids.append(order_item.iid)
+        print(
+            f'Order Item id: {order_item.iid}\t'
+            f'order id: {order_item.oid}\t'
+            f'product count: {order_item.qty}\t'
+            f'product id: {order_item.pid}'
+        )
+    order_item_id = input('Select an order item id: ')
+    if int(order_item_id) not in order_item_ids:
+        print("wrong id")
+        print()
+        return
+
+    this_order_item = session.query(OrderItem).filter(OrderItem.iid == order_item_id).first()
+
+    print(
+        f'Order Item id: {this_order_item.iid}\t'
+        f'order id: {this_order_item.oid}\t'
+        f'product count: {this_order_item.qty}\t'
+        f'product id: {this_order_item.pid}'
+    )
+
+    order_item_new_qty = input('enter new product count: ')
+
+    session.query(OrderItem).filter(OrderItem.iid == order_item_id).update({OrderItem.qty: order_item_new_qty})
+    date = datetime.datetime.utcnow()
+    session.query(Order).filter(Order.oid == this_order_item.oid).update({Order.oDate: date})
+    session.commit()
+
+    this_order_item = session.query(OrderItem).filter(OrderItem.iid == order_item_id).first()
+
+    print(
+        f'Order Item id: {this_order_item.iid}\t'
+        f'order id: {this_order_item.oid}\t'
+        f'product count: {this_order_item.qty}\t'
+        f'product id: {this_order_item.pid}'
+    )
+    print()
+
+
+def update_product():
+    all_product = session.query(Product).all()
+    product_ids = []
+    print('\nAll product: ')
+    for product in all_product:
+        product_ids.append(product.pid)
+        print(
+            f'product id: {product.pid}\t'
+            f'product name: {product.pname}\t'
+            f'product price: {product.price}'
+        )
+
+    product_id = input('Select an product id: ')
+    if int(product_id) not in product_ids:
+        print('wrong id')
+        print()
+        return
+
+    this_product = session.query(Product).filter(Product.pid == product_id).first()
+
+    print(
+        f'product id: {this_product.pid}\t'
+        f'product name: {this_product.pname}\t'
+        f'product price: {this_product.price}'
+    )
+
+    print("1.name")
+    print("2.price")
+    choose_command = input("which one do you want to change:")
+
+    if choose_command == "1":
+        name = input('enter new name : ')
+        session.query(Product).filter(Product.pid == product_id).update({Product.pname: name})
+        session.commit()
+
+    elif choose_command == "2":
+        price = input('enter new price : ')
+        session.query(Product).filter(Product.pid == product_id).update({Product.price: price})
+        session.commit()
+
+    else:
+        print("wrong command")
+        return
+
+    this_product = session.query(Product).filter(Product.pid == product_id).first()
+
+    print(
+        f'product id: {this_product.pid}\t'
+        f'product name: {this_product.pname}\t'
+        f'product price: {this_product.price}'
+    )
+    print()
+
+
 while True:
     print('1. Create New Order')
     print('2. Show Orders and Items')
     print('3. Show Products')
-    print('4. Exit')
+    print('4. update')
+    print('5. Exit')
 
     command = input('Enter a number: ')
 
@@ -292,6 +446,8 @@ while True:
     elif command == '3':
         show_products()
     elif command == '4':
+        update_which()
+    elif command == '5':
         break
     else:
         print('You have entered a wrong number.\n')
