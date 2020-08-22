@@ -124,6 +124,9 @@ class Root(Tk):
     def __init__(self):
         super(Root, self).__init__()
 
+        self.product_extra_queries_button = Button()
+        self.extra_queries_clear_button = Button()
+        self.orderitem_extra_queries_button = Button()
         self.geometry("774x553+558+225")
         self.minsize(176, 1)
         self.maxsize(1924, 1050)
@@ -139,12 +142,14 @@ class Root(Tk):
         self.add = None
         self.delete = None
         self.exit = None
+        self.extra_queries = None
         self.back_show_button = None
         self.show_listbox = None
         self.product_show_button = None
         self.orderitem_show_button = None
         self.order_show_button = None
         self.customer_show_button = None
+        self.extra_queries = None
         self.id_entry = None
         self.add_back_button = None
         self.add_orderitem_button = None
@@ -191,6 +196,10 @@ class Root(Tk):
         self.delete_order_id_entry = None
         self.delete_product_id_entry = None
         self.delete_customer_id_entry = None
+        self.back_extra_queries_button = None
+        self.order_extra_queries_button = None
+        self.extra_queries_listbox = None
+        self.extra_queries_entry = None
 
         self.home_page()
 
@@ -199,12 +208,14 @@ class Root(Tk):
         self.welcome_label = Label(self.first_frame)
         self.option_label = Label(self.first_frame)
         self.show = Button()
+        self.extra_queries = Button()
         self.update = Button()
         self.add = Button()
         self.delete = Button()
         self.exit = Button()
         self.show_information()
         self.show_button()
+        self.extra_queries_button()
         self.update_button()
         self.delete_button()
         self.add_button()
@@ -216,6 +227,7 @@ class Root(Tk):
         self.add.destroy()
         self.delete.destroy()
         self.update.destroy()
+        self.extra_queries.destroy()
         self.exit.destroy()
 
     def show_information(self):
@@ -1376,12 +1388,182 @@ class Root(Tk):
             text='''Delete Information'''
         )
 
+    def clear_extra_queries_page(self):
+        self.back_extra_queries_button.destroy()
+        self.extra_queries_listbox.destroy()
+        self.product_extra_queries_button.destroy()
+        self.orderitem_extra_queries_button.destroy()
+        self.order_extra_queries_button.destroy()
+        self.extra_queries_clear_button.destroy()
+        self.extra_queries_entry.destroy()
+
+    def extra_queries_clear_command(self):
+        self.extra_queries_listbox.delete(0, 'end')
+
+    def extra_queries_clear(self):
+        self.extra_queries_clear_button = Button()
+        self.extra_queries_clear_button.place(relx=0.155, rely=0.452, height=92, width=268)
+        self.extra_queries_clear_button.configure(
+            activebackground="#ececec",
+            activeforeground="#000000",
+            background="#d9d9d9",
+            disabledforeground="#a3a3a3",
+            foreground="#000000",
+            highlightbackground="#d9d9d9",
+            highlightcolor="black",
+            pady="0",
+            command=self.extra_queries_clear_command,
+            text='''Clear'''
+        )
+
+    def extra_queries_product_command(self):
+        this_orderitem_id = int(self.extra_queries_entry.get())
+        all_orderitems = session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).all()
+        if not all_orderitems:
+            self.extra_queries_listbox.insert(0, 'This item does not exist.')
+        else:
+            for orderitem in all_orderitems:
+                self.extra_queries_listbox.insert(0, orderitem.product)
+
+    def extra_queries_product(self):
+        self.product_extra_queries_button = Button()
+        self.product_extra_queries_button.place(relx=0.53, rely=0.633, height=92, width=268)
+        self.product_extra_queries_button.configure(
+            activebackground="#ececec",
+            activeforeground="#000000",
+            background="#d9d9d9",
+            disabledforeground="#a3a3a3",
+            foreground="#000000",
+            highlightbackground="#d9d9d9",
+            highlightcolor="black",
+            pady="0",
+            command=self.extra_queries_product_command,
+            text='''Products of This Order Item'''
+        )
+
+    def extra_queries_orderitem_command(self):
+        this_order_id = int(self.extra_queries_entry.get())
+        all_orderitems = session.query(OrderItem).filter(OrderItem.oid == this_order_id).all()
+        if not all_orderitems:
+            self.extra_queries_listbox.insert(0, 'This item does not exist.')
+        else:
+            for this_orderitem in all_orderitems:
+                self.extra_queries_listbox.insert(0, this_orderitem)
+
+    def extra_queries_orderitem(self):
+        self.orderitem_extra_queries_button = Button()
+        self.orderitem_extra_queries_button.place(relx=0.155, rely=0.633, height=92, width=268)
+        self.orderitem_extra_queries_button.configure(
+            activebackground="#ececec",
+            activeforeground="#000000",
+            background="#d9d9d9",
+            disabledforeground="#a3a3a3",
+            foreground="#000000",
+            highlightbackground="#d9d9d9",
+            highlightcolor="black",
+            pady="0",
+            command=self.extra_queries_orderitem_command,
+            text='''Order Items of This Orders'''
+        )
+
+    def extra_queries_order_command(self):
+        this_customer_id = int(self.extra_queries_entry.get())
+        all_orders = session.query(Order).filter(Order.cid == this_customer_id).all()
+        if not all_orders:
+            self.extra_queries_listbox.insert(0, 'This item does not exist.')
+        else:
+            for this_order in all_orders:
+                self.extra_queries_listbox.insert(0, this_order)
+
+    def extra_queries_order(self):
+        self.order_extra_queries_button = Button()
+        self.order_extra_queries_button.place(relx=0.53, rely=0.452, height=92, width=268)
+        self.order_extra_queries_button.configure(
+            activebackground="#ececec",
+            activeforeground="#000000",
+            background="#d9d9d9",
+            disabledforeground="#a3a3a3",
+            foreground="#000000",
+            highlightbackground="#d9d9d9",
+            highlightcolor="black",
+            pady="0",
+            command=self.extra_queries_order_command,
+            text='''Orders of This Customer'''
+        )
+
+    def extra_queries_listbox_command(self):
+        self.extra_queries_listbox = Listbox()
+        self.extra_queries_listbox.place(relx=0.155, rely=0.038, relheight=0.309, relwidth=0.716)
+        self.extra_queries_listbox.configure(
+            background="white",
+            disabledforeground="#a3a3a3",
+            font="TkFixedFont",
+            foreground="#000000"
+        )
+
+    def extra_queries_entry_command(self):
+        self.extra_queries_entry = Entry()
+        self.extra_queries_entry.place(relx=0.155, rely=0.37, height=36, relwidth=0.716)
+        self.extra_queries_entry.configure(
+            background="white",
+            disabledforeground="#a3a3a3",
+            font="TkFixedFont",
+            foreground="#000000",
+            insertbackground="black"
+        )
+        self.extra_queries_entry.insert(0, "Enter the ID")
+
+    def extra_queries_back_command(self):
+        self.clear_extra_queries_page()
+        self.home_page()
+
+    def extra_queries_back(self):
+        self.back_extra_queries_button = Button()
+        self.back_extra_queries_button.place(relx=0.155, rely=0.814, height=92, width=558)
+        self.back_extra_queries_button.configure(
+            activebackground="#ececec",
+            activeforeground="#000000",
+            background="#d9d9d9",
+            disabledforeground="#a3a3a3",
+            foreground="#000000",
+            highlightbackground="#d9d9d9",
+            highlightcolor="black",
+            pady="0",
+            command=self.extra_queries_back_command,
+            text='''BACK'''
+        )
+
+    def extra_queries_command(self):
+        self.clear_home_page()
+        self.extra_queries_clear()
+        self.extra_queries_product()
+        self.extra_queries_orderitem()
+        self.extra_queries_order()
+        self.extra_queries_listbox_command()
+        self.extra_queries_entry_command()
+        self.extra_queries_back()
+
+    def extra_queries_button(self):
+        self.extra_queries.place(relx=0.543, rely=0.741, height=92, width=228)
+        self.extra_queries.configure(
+            activebackground="#ececec",
+            activeforeground="#000000",
+            background="#d9d9d9",
+            disabledforeground="#a3a3a3",
+            foreground="#000000",
+            highlightbackground="#d9d9d9",
+            highlightcolor="black",
+            pady="0",
+            command=self.extra_queries_command,
+            text='''Extra Queries'''
+        )
+
     def exit_command(self):
         self.destroy()
         self.quit()
 
     def exit_button(self):
-        self.exit.place(relx=0.155, rely=0.741, height=92, width=528)
+        self.exit.place(relx=0.155, rely=0.741, height=92, width=228)
         self.exit.configure(
             activebackground="#ececec",
             activeforeground="#000000",
