@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Foreign
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
-engine = create_engine('sqlite:///:memory:', echo=False)
+engine = create_engine('sqlite:///product_manager.db', echo=False)
 
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -18,6 +18,11 @@ class Customer(Base):
 
     cid = Column(Integer, primary_key=True)
     cname = Column(String)
+    order = relationship(
+        "Order",
+        cascade="all, delete",
+        backref="order"
+    )
 
     def __repr__(self):
         return f"Customer(cid={self.cid}, cname='{self.cname}')"
@@ -29,7 +34,11 @@ class Order(Base):
     oid = Column(Integer, primary_key=True)
     oDate = Column(DateTime, default=datetime.datetime.utcnow)
     cid = Column(Integer, ForeignKey('customer.cid', ondelete='CASCADE'))
-    customer = relationship('Customer', backref='order1')
+    orderitem = relationship(
+        "OrderItem",
+        cascade="all, delete",
+        backref="orderitem1"
+    )
 
     def __repr__(self):
         return f"Order(oid={self.oid}, oDate='{self.oDate}', cid={self.cid})"
@@ -41,6 +50,11 @@ class Product(Base):
     pid = Column(Integer, primary_key=True)
     pname = Column(String)
     price = Column(Integer)
+    orderitem = relationship(
+        "OrderItem",
+        cascade="all, delete",
+        backref="orderitem"
+    )
 
     def __repr__(self):
         return f"Product(pid={self.pid}, pname='{self.pname}', price={self.price})"
@@ -51,10 +65,8 @@ class OrderItem(Base):
 
     iid = Column(Integer, primary_key=True)
     oid = Column(Integer, ForeignKey('order1.oid', ondelete='CASCADE'))
-    order = relationship('Order', backref='order1')
     qty = Column(Integer)
     pid = Column(Integer, ForeignKey('product.pid', ondelete='CASCADE'))
-    product = relationship('Product', backref='product')
 
     def __repr__(self):
         return f"OrderItem(iid={self.iid}, oid={self.oid}, qty={self.qty}, pid={self.pid})"
@@ -124,9 +136,6 @@ class Root(Tk):
     def __init__(self):
         super(Root, self).__init__()
 
-        self.product_extra_queries_button = Button()
-        self.extra_queries_clear_button = Button()
-        self.orderitem_extra_queries_button = Button()
         self.geometry("774x553+558+225")
         self.minsize(176, 1)
         self.maxsize(1924, 1050)
@@ -200,6 +209,9 @@ class Root(Tk):
         self.order_extra_queries_button = None
         self.extra_queries_listbox = None
         self.extra_queries_entry = None
+        self.product_extra_queries_button = None
+        self.extra_queries_clear_button = None
+        self.orderitem_extra_queries_button = None
 
         self.home_page()
 
@@ -267,6 +279,7 @@ class Root(Tk):
     def show_customers_command(self):
         this_customer_id = int(self.id_entry.get())
         this_customer = session.query(Customer).filter(Customer.cid == this_customer_id).first()
+        session.commit()
         if this_customer is None:
             self.show_listbox.insert(0, 'This item does not exist.')
         else:
@@ -291,6 +304,7 @@ class Root(Tk):
     def show_product_command(self):
         this_product_id = int(self.id_entry.get())
         this_product = session.query(Product).filter(Product.pid == this_product_id).first()
+        session.commit()
         if this_product is None:
             self.show_listbox.insert(0, 'This item does not exist.')
         else:
@@ -315,6 +329,7 @@ class Root(Tk):
     def show_orderitem_command(self):
         this_orderitem_id = int(self.id_entry.get())
         this_orderitem = session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).first()
+        session.commit()
         if this_orderitem is None:
             self.show_listbox.insert(0, 'This item does not exist.')
         else:
@@ -339,6 +354,7 @@ class Root(Tk):
     def show_order_command(self):
         this_order_id = int(self.id_entry.get())
         this_order = session.query(Order).filter(Order.oid == this_order_id).first()
+        session.commit()
         if this_order is None:
             self.show_listbox.insert(0, 'This item does not exist.')
         else:
@@ -442,13 +458,18 @@ class Root(Tk):
         self.add_customer_name_entry.destroy()
 
     def add_orderitem_command(self):
-        this_orderitem = OrderItem(
-            oid=int(self.add_orderitem_orderid_entry.get()),
-            qty=int(self.add_orderitem_count_entry.get()),
-            pid=int(self.add_orderitem_produtid_entry.get())
-        )
-        session.add(this_orderitem)
-        session.commit()
+        new_order_id = int(self.add_orderitem_orderid_entry.get())
+        new_product_id = int(self.add_orderitem_produtid_entry.get())
+        new_order = session.query(Order).filter(Order.oid == new_order_id).first()
+        new_product = session.query(Product).filter(Product.pid == new_product_id).first()
+        if new_order and new_product:
+            this_orderitem = OrderItem(
+                oid=new_order_id,
+                qty=int(self.add_orderitem_count_entry.get()),
+                pid=new_product_id
+            )
+            session.add(this_orderitem)
+            session.commit()
 
     def add_orderitem(self):
         self.add_orderitem_button = Button()
@@ -491,9 +512,12 @@ class Root(Tk):
         )
 
     def add_order_command(self):
-        this_order = Order(cid=int(self.add_order_customerid_entry.get()))
-        session.add(this_order)
-        session.commit()
+        new_customer_id = int(self.add_order_customerid_entry.get())
+        new_customer = session.query(Customer).filter(Customer.cid == new_customer_id).first()
+        if new_customer:
+            this_order = Order(cid=int(self.add_order_customerid_entry.get()))
+            session.add(this_order)
+            session.commit()
 
     def add_order(self):
         self.add_order_button = Button()
@@ -739,10 +763,13 @@ class Root(Tk):
     def update_find_customer_command(self):
         this_customer_id = int(self.update_customer_id_entry.get())
         this_customer = session.query(Customer).filter(Customer.cid == this_customer_id).first()
+        session.commit()
+        self.update_customer_customerid_entry.configure(state='normal')
         self.update_customer_customerid_entry.delete(0, 'end')
         self.update_customer_customername_entry.delete(0, 'end')
         self.update_customer_customerid_entry.insert(0, this_customer.cid)
         self.update_customer_customername_entry.insert(0, this_customer.cname)
+        self.update_customer_customerid_entry.configure(state='readonly')
 
     def update_find_customer(self):
         self.update_find_customer_button = Button()
@@ -763,10 +790,13 @@ class Root(Tk):
     def update_find_order_command(self):
         this_order_id = int(self.update_order_id_entry.get())
         this_order = session.query(Order).filter(Order.oid == this_order_id).first()
+        session.commit()
+        self.update_order_orderid_entry.configure(state='normal')
         self.update_order_orderid_entry.delete(0, 'end')
         self.update_order_customerid_entry.delete(0, 'end')
         self.update_order_orderid_entry.insert(0, this_order.oid)
         self.update_order_customerid_entry.insert(0, this_order.cid)
+        self.update_order_orderid_entry.configure(state='readonly')
 
     def update_find_order(self):
         self.update_find_order_button = Button()
@@ -787,12 +817,15 @@ class Root(Tk):
     def update_find_product_command(self):
         this_product_id = int(self.update_product_id_entry.get())
         this_product = session.query(Product).filter(Product.pid == this_product_id).first()
+        session.commit()
+        self.update_product_productid_entry.configure(state='normal')
         self.update_product_productid_entry.delete(0, 'end')
         self.update_product_productname_entry.delete(0, 'end')
         self.update_product_price_entry.delete(0, 'end')
         self.update_product_productid_entry.insert(0, this_product.pid)
         self.update_product_productname_entry.insert(0, this_product.pname)
         self.update_product_price_entry.insert(0, this_product.price)
+        self.update_product_productid_entry.configure(state='readonly')
 
     def update_find_product(self):
         self.update_find_product_button = Button()
@@ -813,6 +846,8 @@ class Root(Tk):
     def update_find_orderitem_command(self):
         this_orderitem_id = int(self.update_orderitem_id_entry.get())
         this_orderitem = session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).first()
+        session.commit()
+        self.update_orderitem_orderitemid_entry.configure(state='normal')
         self.update_orderitem_orderitemid_entry.delete(0, 'end')
         self.update_orderitem_orderid_entry.delete(0, 'end')
         self.update_orderitem_count_entry.delete(0, 'end')
@@ -821,6 +856,7 @@ class Root(Tk):
         self.update_orderitem_orderid_entry.insert(0, this_orderitem.oid)
         self.update_orderitem_count_entry.insert(0, this_orderitem.qty)
         self.update_orderitem_product_entry.insert(0, this_orderitem.pid)
+        self.update_orderitem_orderitemid_entry.configure(state='readonly')
 
     def update_find_orderitem(self):
         self.update_find_orderitem_button = Button()
@@ -840,10 +876,14 @@ class Root(Tk):
 
     def update_order_command(self):
         this_order_id = int(self.update_order_orderid_entry.get())
-        session.query(Order).filter(Order.oid == this_order_id).update({
-            Order.cid: int(self.update_order_customerid_entry.get()),
-            Order.oDate: datetime.datetime.utcnow()
-        })
+        new_customer_id = int(self.update_order_customerid_entry.get())
+        new_customer = session.query(Customer).filter(Customer.cid == new_customer_id).first()
+        if new_customer:
+            session.query(Order).filter(Order.oid == this_order_id).update({
+                Order.cid: new_customer_id,
+                Order.oDate: datetime.datetime.utcnow()
+            })
+            session.commit()
 
     def update_order(self):
         self.update_order_button = Button()
@@ -867,6 +907,7 @@ class Root(Tk):
             Product.pname: self.update_product_productname_entry.get(),
             Product.price: int(self.update_product_price_entry.get()),
         })
+        session.commit()
 
     def update_product(self):
         self.update_product_button = Button()
@@ -886,11 +927,17 @@ class Root(Tk):
 
     def update_orderitem_command(self):
         this_orderitem_id = int(self.update_orderitem_orderitemid_entry.get())
-        session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).update({
-            OrderItem.pid: int(self.update_orderitem_product_entry.get()),
-            OrderItem.oid: int(self.update_orderitem_orderid_entry.get()),
-            OrderItem.qty: int(self.update_orderitem_count_entry.get())
-        })
+        new_product_id = int(self.update_orderitem_product_entry.get())
+        new_order_id = int(self.update_orderitem_orderid_entry.get())
+        new_product = session.query(Product).filter(Product.pid == new_product_id).first()
+        new_order = session.query(Order).filter(Order.oid == new_order_id).first()
+        if new_product and new_order:
+            session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).update({
+                OrderItem.pid: new_product_id,
+                OrderItem.oid: new_order_id,
+                OrderItem.qty: int(self.update_orderitem_count_entry.get())
+            })
+            session.commit()
 
     def update_orderitem(self):
         self.update_orderitem_button = Button()
@@ -913,6 +960,7 @@ class Root(Tk):
         session.query(Customer).filter(Customer.cid == this_customer_id).update({
             Customer.cname: self.update_customer_customername_entry.get(),
         })
+        session.commit()
 
     def update_customer(self):
         self.update_customer_button = Button()
@@ -1081,7 +1129,7 @@ class Root(Tk):
         )
 
     def update_orderitem_orderitemid(self):
-        self.update_orderitem_orderitemid_entry = Entry()
+        self.update_orderitem_orderitemid_entry = Entry(state='readonly')
         self.update_orderitem_orderitemid_entry.place(relx=0.039, rely=0.597, height=26, relwidth=0.199)
         self.update_orderitem_orderitemid_entry.configure(
             background="white",
@@ -1096,7 +1144,7 @@ class Root(Tk):
         )
 
     def update_order_orderid(self):
-        self.update_order_orderid_entry = Entry()
+        self.update_order_orderid_entry = Entry(state='readonly')
         self.update_order_orderid_entry.place(relx=0.039, rely=0.434, height=26, relwidth=0.199)
         self.update_order_orderid_entry.configure(
             background="white",
@@ -1126,7 +1174,7 @@ class Root(Tk):
         )
 
     def update_product_productid(self):
-        self.update_product_productid_entry = Entry()
+        self.update_product_productid_entry = Entry(state='readonly')
         self.update_product_productid_entry.place(relx=0.039, rely=0.253, height=26, relwidth=0.199)
         self.update_product_productid_entry.configure(
             background="white",
@@ -1141,7 +1189,7 @@ class Root(Tk):
         )
 
     def update_customer_customerid(self):
-        self.update_customer_customerid_entry = Entry()
+        self.update_customer_customerid_entry = Entry(state='readonly')
         self.update_customer_customerid_entry.place(relx=0.039, rely=0.108, height=26, relwidth=0.199)
         self.update_customer_customerid_entry.configure(
             background="white",
@@ -1225,6 +1273,7 @@ class Root(Tk):
         this_orderitem_id = int(self.delete_orderitem_id_entry.get())
         this_orderitem = session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).first()
         session.delete(this_orderitem)
+        session.commit()
 
     def delete_orderitem(self):
         self.delete_orderitem_button = Button()
@@ -1246,6 +1295,7 @@ class Root(Tk):
         this_order_id = int(self.delete_order_id_entry.get())
         this_order = session.query(Order).filter(Order.oid == this_order_id).first()
         session.delete(this_order)
+        session.commit()
 
     def delete_order(self):
         self.delete_order_button = Button()
@@ -1267,6 +1317,7 @@ class Root(Tk):
         this_product_id = int(self.delete_product_id_entry.get())
         this_product = session.query(Product).filter(Product.pid == this_product_id).first()
         session.delete(this_product)
+        session.commit()
 
     def delete_product(self):
         self.delete_product_button = Button()
@@ -1288,6 +1339,7 @@ class Root(Tk):
         this_customer_id = int(self.delete_customer_id_entry.get())
         this_customer = session.query(Customer).filter(Customer.cid == this_customer_id).first()
         session.delete(this_customer)
+        session.commit()
 
     def delete_customer(self):
         self.delete_customer_button = Button()
@@ -1418,12 +1470,14 @@ class Root(Tk):
 
     def extra_queries_product_command(self):
         this_orderitem_id = int(self.extra_queries_entry.get())
-        all_orderitems = session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).all()
-        if not all_orderitems:
+        this_orderitem = session.query(OrderItem).filter(OrderItem.iid == this_orderitem_id).first()
+        if this_orderitem is None:
             self.extra_queries_listbox.insert(0, 'This item does not exist.')
         else:
-            for orderitem in all_orderitems:
-                self.extra_queries_listbox.insert(0, orderitem.product)
+            all_products = session.query(Product).filter(Product.pid == this_orderitem.pid).all()
+            for product in all_products:
+                self.extra_queries_listbox.insert(0, product)
+        session.commit()
 
     def extra_queries_product(self):
         self.product_extra_queries_button = Button()
@@ -1449,6 +1503,7 @@ class Root(Tk):
         else:
             for this_orderitem in all_orderitems:
                 self.extra_queries_listbox.insert(0, this_orderitem)
+        session.commit()
 
     def extra_queries_orderitem(self):
         self.orderitem_extra_queries_button = Button()
@@ -1474,6 +1529,7 @@ class Root(Tk):
         else:
             for this_order in all_orders:
                 self.extra_queries_listbox.insert(0, this_order)
+        session.commit()
 
     def extra_queries_order(self):
         self.order_extra_queries_button = Button()
